@@ -1,4 +1,4 @@
-name: Build Capacitor Android APK
+name: Build APK
 
 on:
   workflow_dispatch:
@@ -31,43 +31,83 @@ jobs:
           java-version: '21'
           cache: gradle
 
-      - name: Install npm dependencies
-        run: |
-          npm install
+      - name: Install dependencies
+        run: npm ci
 
-      - name: Sync Capacitor Android
-        run: |
-          npx cap sync android
+      - name: Capacitor Sync
+        run: npx cap sync android
 
-      - name: Verify generated Cordova Gradle files
+      - name: Verify Capacitor files
         run: |
+          echo "Checking Capacitor generated files..."
+
           if [ ! -f "android/capacitor-cordova-android-plugins/cordova.variables.gradle" ]; then
-            echo "::error::cordova.variables.gradle was not generated."
-            echo "Checking Capacitor Android directories:"
-            find android -maxdepth 3 -type f -name "*.gradle" | sort | head -200 || true
+            echo "cordova.variables.gradle missing, running Capacitor update..."
+            npx cap update android
+            npx cap sync android
+          fi
+
+          if [ ! -f "android/capacitor-cordova-android-plugins/cordova.variables.gradle" ]; then
+            echo "::error::cordova.variables.gradle still missing!"
+            find android -maxdepth 4 -type f | sort
             exit 1
           fi
-          echo "cordova.variables.gradle exists."
+
+          echo "cordova.variables.gradle OK"
+
+      - name: Create release keystore
+        working-directory: android/app
+        run: |
+          if [ ! -f release.keystore ]; then
+            echo "Creating release.keystore..."
+
+            keytool -genkeypair \
+              -v \
+              -keystore release.keystore \
+              -alias mori \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -storepass android123 \
+              -keypass android123 \
+              -dname "CN=Mori, OU=Mori, O=Mori, L=Jakarta, ST=Jakarta, C=ID"
+
+            echo "release.keystore created."
+          else
+            echo "release.keystore already exists."
+          fi
 
       - name: Grant Gradle permission
         run: chmod +x android/gradlew
 
-      - name: Clean Android
+      - name: Clean Gradle
         working-directory: android
-        run: ./gradlew clean
+        run: ./gradlew clean --no-daemon
 
       - name: Build release APK
         working-directory: android
-        run: ./gradlew assembleRelease --stacktrace
+        run: ./gradlew :app:assembleRelease --no-daemon --stacktrace --warning-mode all
 
-      - name: Find APK
+      - name: Verify APK
         run: |
-          echo "Generated APK files:"
-          find android/app/build/outputs/apk -type f -name "*.apk" -print
+          echo "APK output:"
+          find android/app/build/outputs/apk/release \
+            -type f \
+            -name "*.apk" \
+            -print
 
-      - name: Upload release APK
+          APK_COUNT=$(find android/app/build/outputs/apk/release \
+            -type f \
+            -name "*.apk" | wc -l)
+
+          if [ "$APK_COUNT" -eq 0 ]; then
+            echo "::error::APK tidak ditemukan!"
+            exit 1
+          fi
+
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: am-premium-release-apk
+          name: Mori-Premium-Release
           path: android/app/build/outputs/apk/release/*.apk
           if-no-files-found: error
