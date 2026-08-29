@@ -1,0 +1,592 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Levandoz v1 - SamuDev</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- SweetAlert2 for beautiful popups -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <!-- Firebase SDK (Compat version) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@500;600;700&display=swap');
+
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background-color: #0d0d12;
+            color: #ffffff;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .title-font {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        ::-webkit-scrollbar { width: 0px; }
+
+        /* Glassmorphism Inputs */
+        .glass-input {
+            background: #1a1a24;
+            border: 1px solid #2d2d3d;
+            transition: all 0.3s ease;
+        }
+        .glass-input:focus {
+            background: #232332;
+            border-color: #818cf8;
+            box-shadow: 0 0 10px rgba(129, 140, 248, 0.2);
+            outline: none;
+        }
+
+        .glass-card {
+            background: #15151e;
+            border: 1px solid #232332;
+            border-radius: 16px;
+        }
+
+        /* Video Banner Styling */
+        .video-container {
+            position: relative;
+            width: 100%;
+            height: 200px;
+            border-radius: 20px;
+            overflow: hidden;
+            background-color: #000;
+        }
+        .video-container video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.5;
+        }
+        .video-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(to right, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.1) 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        /* Loaders */
+        .loader {
+            border: 3px solid rgba(255,255,255,0.1);
+            border-top: 3px solid #000; /* Hitam agar terlihat di tombol terang */
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+        .loader-large {
+            border: 4px solid rgba(255,255,255,0.1);
+            border-top: 4px solid #818cf8;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body class="antialiased min-h-screen flex flex-col items-center">
+
+    <!-- OVERLAY LOADER AWAL -->
+    <div id="global-loader" class="fixed inset-0 bg-[#0d0d12] z-50 flex flex-col justify-center items-center">
+        <div class="loader-large"></div>
+        <p class="mt-4 text-indigo-400 font-bold tracking-widest title-font animate-pulse">MEMUAT SISTEM...</p>
+    </div>
+
+    <!-- ==================== LOGIN PAGE ==================== -->
+    <div id="login-page" class="w-full max-w-md p-6 flex flex-col justify-center min-h-screen hidden">
+        <div class="text-center mb-10">
+            <h1 class="text-4xl font-bold title-font text-white mb-2">Levandoz <span class="text-indigo-500">v1</span></h1>
+            <p class="text-gray-400 text-sm">AM Premium Injector by SamuDev</p>
+        </div>
+
+        <form id="login-form" class="space-y-5">
+            <div>
+                <label class="text-xs text-gray-400 ml-1">Email atau Username</label>
+                <div class="relative mt-1">
+                    <i class="fa-solid fa-user absolute left-4 top-3.5 text-gray-500"></i>
+                    <input type="text" id="login-identifier" required class="glass-input w-full py-3 pl-11 pr-4 rounded-xl text-white placeholder-gray-600" placeholder="SamuDev / email@gmail.com">
+                </div>
+            </div>
+            <div>
+                <label class="text-xs text-gray-400 ml-1">Password</label>
+                <div class="relative mt-1">
+                    <i class="fa-solid fa-lock absolute left-4 top-3.5 text-gray-500"></i>
+                    <input type="password" id="login-password" required class="glass-input w-full py-3 pl-11 pr-4 rounded-xl text-white placeholder-gray-600" placeholder="••••••••">
+                </div>
+            </div>
+            
+            <button type="submit" id="btn-login" class="w-full bg-[#9c90d6] hover:bg-[#857bb8] text-gray-900 font-bold py-3.5 rounded-xl transition mt-4 flex justify-center items-center">
+                <span id="login-text">MASUK</span>
+                <div class="loader ml-2 hidden" id="login-loader"></div>
+            </button>
+        </form>
+
+        <p class="text-center text-gray-400 mt-8 text-sm">
+            Belum punya akun? <a href="#" id="go-to-register" class="text-indigo-400 font-bold hover:underline">Daftar Sekarang</a>
+        </p>
+    </div>
+
+    <!-- ==================== REGISTER PAGE ==================== -->
+    <div id="register-page" class="w-full max-w-md p-6 flex flex-col justify-center min-h-screen hidden">
+        <div class="mb-8 flex items-center">
+            <button id="go-to-login" class="text-gray-400 hover:text-white mr-4"><i class="fa-solid fa-arrow-left text-xl"></i></button>
+            <h1 class="text-2xl font-bold title-font text-white">Daftar Akun Baru</h1>
+        </div>
+
+        <form id="register-form" class="space-y-4">
+            <div>
+                <label class="text-xs text-gray-400 ml-1">Username</label>
+                <div class="relative mt-1">
+                    <i class="fa-solid fa-user absolute left-4 top-3.5 text-gray-500"></i>
+                    <input type="text" id="reg-username" required class="glass-input w-full py-3 pl-11 pr-4 rounded-xl text-white placeholder-gray-600" placeholder="SamuDev">
+                </div>
+            </div>
+            <div>
+                <label class="text-xs text-gray-400 ml-1">Email</label>
+                <div class="relative mt-1">
+                    <i class="fa-solid fa-envelope absolute left-4 top-3.5 text-gray-500"></i>
+                    <input type="email" id="reg-email" required class="glass-input w-full py-3 pl-11 pr-4 rounded-xl text-white placeholder-gray-600" placeholder="email@gmail.com">
+                </div>
+            </div>
+            <div>
+                <label class="text-xs text-gray-400 ml-1">Password</label>
+                <div class="relative mt-1">
+                    <i class="fa-solid fa-lock absolute left-4 top-3.5 text-gray-500"></i>
+                    <input type="password" id="reg-password" required minlength="6" class="glass-input w-full py-3 pl-11 pr-4 rounded-xl text-white placeholder-gray-600" placeholder="••••••••">
+                </div>
+            </div>
+            <div>
+                <label class="text-xs text-gray-400 ml-1">Ulangi Password</label>
+                <div class="relative mt-1">
+                    <i class="fa-solid fa-lock absolute left-4 top-3.5 text-gray-500"></i>
+                    <input type="password" id="reg-password-confirm" required minlength="6" class="glass-input w-full py-3 pl-11 pr-4 rounded-xl text-white placeholder-gray-600" placeholder="••••••••">
+                </div>
+            </div>
+            
+            <button type="submit" id="btn-register" class="w-full bg-[#b8aee6] hover:bg-[#9c90d6] text-gray-900 font-bold py-3.5 rounded-xl transition mt-6 flex justify-center items-center">
+                <span id="reg-text">BUAT AKUN SEKARANG</span>
+                <div class="loader ml-2 hidden" id="reg-loader"></div>
+            </button>
+        </form>
+    </div>
+
+    <!-- ==================== DASHBOARD PAGE ==================== -->
+    <div id="dashboard-page" class="w-full max-w-md min-h-screen hidden flex-col pb-10">
+        <!-- Navbar -->
+        <div class="flex justify-between items-center p-5">
+            <button class="text-gray-300 text-2xl"><i class="fa-solid fa-bars"></i></button>
+            <h1 class="text-xl font-bold title-font tracking-wide">Levandoz v1</h1>
+            <div class="w-9 h-9 rounded-full bg-[#1a1a24] flex items-center justify-center border border-[#2d2d3d]">
+                <i class="fa-solid fa-user-ninja text-indigo-400"></i>
+            </div>
+        </div>
+
+        <div class="px-5 space-y-4">
+            <!-- Video Banner -->
+            <div class="video-container">
+                <video autoplay loop muted playsinline>
+                    <source src="assets/banner.mp4" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+                <div class="video-overlay">
+                    <h2 class="text-4xl font-bold title-font text-white opacity-40 mb-2">Levandoz</h2>
+                    <p class="text-sm text-gray-300 font-bold">Made By:</p>
+                    <p class="text-lg text-white font-bold flex items-center">@SamuDev <span class="text-red-500 ml-1"><i class="fa-solid fa-droplet"></i></span></p>
+                    <div class="absolute bottom-4 right-4 bg-black/60 border border-white/10 px-4 py-1.5 rounded-full backdrop-blur-md flex items-center shadow-lg">
+                        <i class="fa-solid fa-coins text-yellow-500 mr-2"></i>
+                        <span class="text-xs text-gray-300 mr-1">Kredit:</span>
+                        <span id="user-credits" class="font-bold text-white">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Grid Menu -->
+            <div class="grid grid-cols-2 gap-4 mt-6">
+                <!-- Menu 1: Send Magic Link -->
+                <div onclick="openMenu('send-link')" class="glass-card p-4 cursor-pointer hover:bg-[#1a1a24] transition flex flex-col justify-between h-36">
+                    <div class="w-10 h-10 rounded-xl bg-[#232332] flex items-center justify-center mb-2">
+                        <i class="fa-solid fa-envelope-open-text text-white"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-white text-md leading-tight">Kirim Magic</h3>
+                        <p class="text-xs text-gray-400 mt-1">Kirim Link ke Email</p>
+                    </div>
+                </div>
+
+                <!-- Menu 2: Verify Magic Link -->
+                <div onclick="openMenu('verify-link')" class="glass-card p-4 cursor-pointer hover:bg-[#1a1a24] transition flex flex-col justify-between h-36">
+                    <div class="w-10 h-10 rounded-xl bg-[#232332] flex items-center justify-center mb-2">
+                        <i class="fa-solid fa-shield-check text-white"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-white text-md leading-tight">Verifikasi</h3>
+                        <p class="text-xs text-gray-400 mt-1">Aktivasi Premium</p>
+                    </div>
+                </div>
+
+                <!-- Menu 3: Info -->
+                <div class="glass-card p-4 col-span-2 flex items-center justify-between">
+                    <div class="flex items-center">
+                        <div class="w-10 h-10 rounded-xl bg-[#232332] flex items-center justify-center mr-3">
+                            <i class="fa-solid fa-circle-info text-indigo-400"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-white text-md">Info Sistem</h3>
+                            <p class="text-xs text-gray-400">Setiap request memotong 2 kredit.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Kirim Link -->
+            <div id="form-send-link" class="glass-card p-5 mt-4 hidden border-indigo-500/30 border">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-lg"><i class="fa-solid fa-paper-plane text-indigo-400 mr-2"></i> Kirim Magic Link</h3>
+                    <button onclick="closeMenu('send-link')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <input type="email" id="target-email-send" class="glass-input w-full py-3 px-4 rounded-xl text-white placeholder-gray-500 mb-3" placeholder="Masukkan Email Target AM">
+                <button onclick="executeSendLink()" id="btn-exec-send" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 rounded-xl transition flex justify-center items-center">
+                    <span>KIRIM (-2 Kredit)</span>
+                    <div class="loader ml-2 hidden border-t-white" id="send-loader"></div>
+                </button>
+            </div>
+
+            <!-- Form Verifikasi Link -->
+            <div id="form-verify-link" class="glass-card p-5 mt-4 hidden border-green-500/30 border">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-lg"><i class="fa-solid fa-check-double text-green-400 mr-2"></i> Verifikasi Link</h3>
+                    <button onclick="closeMenu('verify-link')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <input type="email" id="target-email-verify" class="glass-input w-full py-3 px-4 rounded-xl text-white placeholder-gray-500 mb-3" placeholder="Email Terdaftar">
+                <input type="text" id="magic-link-input" class="glass-input w-full py-3 px-4 rounded-xl text-white placeholder-gray-500 mb-3" placeholder="Paste Magic Link Disini">
+                <button onclick="executeVerifyLink()" id="btn-exec-verify" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition flex justify-center items-center">
+                    <span>VERIFIKASI (-2 Kredit)</span>
+                    <div class="loader ml-2 hidden border-t-white" id="verify-loader"></div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        const pages = {
+            login: document.getElementById('login-page'),
+            register: document.getElementById('register-page'),
+            dashboard: document.getElementById('dashboard-page'),
+            loader: document.getElementById('global-loader')
+        };
+
+        function showPage(pageName) {
+            Object.values(pages).forEach(p => p.classList.add('hidden'));
+            pages[pageName].classList.remove('hidden');
+        }
+
+        // ==========================================
+        // SISTEM ANTI-STUCK (TIMEOUT PAKSA)
+        // Mencegah loading muter selamanya jika Firebase nge-hang karena dibuka via File Manager
+        // ==========================================
+        function promiseWithTimeout(ms, promise, errorMsg) {
+            return new Promise((resolve, reject) => {
+                const timeoutId = setTimeout(() => {
+                    reject(new Error(errorMsg || "Timeout: Koneksi ke server terputus. Harap jadikan APK via Capacitor atau jalankan di web server!"));
+                }, ms);
+                
+                promise.then(
+                    (res) => { clearTimeout(timeoutId); resolve(res); },
+                    (err) => { clearTimeout(timeoutId); reject(err); }
+                );
+            });
+        }
+
+        const loaderTimeout = setTimeout(() => {
+            if (!pages.loader.classList.contains('hidden')) {
+                pages.loader.classList.add('hidden');
+                showPage('login');
+            }
+        }, 5000); // 5 Detik loader awal, jika macet paksa masuk halaman login
+
+        // ==========================================
+        // FIREBASE CONFIGURATION
+        // ==========================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyByXv08gFFtlW5cStMaOjFEkK-EybTFzA8",
+            authDomain: "chat-samudev.firebaseapp.com",
+            databaseURL: "https://chat-samudev-default-rtdb.firebaseio.com",
+            projectId: "chat-samudev",
+            storageBucket: "chat-samudev.appspot.com",
+            messagingSenderId: "753343096382",
+            appId: "1:753343096382:android:5174bd75dce635ff4d936f"
+        };
+
+        let auth, db;
+        try {
+            firebase.initializeApp(firebaseConfig);
+            auth = firebase.auth();
+            db = firebase.database();
+        } catch (err) {
+            console.error("Firebase Init Error:", err);
+            pages.loader.classList.add('hidden');
+            showPage('login');
+        }
+
+        let currentUser = null;
+        let userData = null;
+        let myDeviceId = "DEV-UNKNOWN";
+
+        // ==========================================
+        // FINGERPRINTING & SAFE MODE
+        // ==========================================
+        function getDeviceFingerprint() {
+            try {
+                const rawString = navigator.userAgent + screen.width;
+                let hash = 0;
+                for (let i = 0; i < rawString.length; i++) {
+                    hash = ((hash << 5) - hash) + rawString.charCodeAt(i);
+                    hash = hash & hash;
+                }
+                return 'DEV-' + Math.abs(hash).toString(16);
+            } catch(e) {
+                return 'DEV-' + Math.random().toString(36).substring(2, 10);
+            }
+        }
+
+        try {
+            myDeviceId = localStorage.getItem('samudev_device_id');
+            if (!myDeviceId) {
+                myDeviceId = getDeviceFingerprint();
+                localStorage.setItem('samudev_device_id', myDeviceId);
+            }
+        } catch(error) {
+            myDeviceId = getDeviceFingerprint(); 
+        }
+
+        // UI Buttons
+        document.getElementById('go-to-register').addEventListener('click', (e) => {
+            e.preventDefault(); showPage('register');
+        });
+        document.getElementById('go-to-login').addEventListener('click', (e) => {
+            e.preventDefault(); showPage('login');
+        });
+
+        function openMenu(menu) {
+            document.getElementById('form-send-link').classList.add('hidden');
+            document.getElementById('form-verify-link').classList.add('hidden');
+            if(menu === 'send-link') document.getElementById('form-send-link').classList.remove('hidden');
+            if(menu === 'verify-link') document.getElementById('form-verify-link').classList.remove('hidden');
+        }
+        function closeMenu(menu) {
+            if(menu === 'send-link') document.getElementById('form-send-link').classList.add('hidden');
+            if(menu === 'verify-link') document.getElementById('form-verify-link').classList.add('hidden');
+        }
+
+        // ==========================================
+        // AUTH STATE
+        // ==========================================
+        if (auth) {
+            auth.onAuthStateChanged((user) => {
+                clearTimeout(loaderTimeout);
+                if (user) {
+                    currentUser = user;
+                    db.ref('users/' + user.uid).on('value', (snapshot) => {
+                        userData = snapshot.val();
+                        if(userData) {
+                            document.getElementById('user-credits').innerText = userData.credits.toLocaleString();
+                            pages.loader.classList.add('hidden');
+                            showPage('dashboard');
+                        }
+                    });
+                } else {
+                    pages.loader.classList.add('hidden');
+                    showPage('login');
+                }
+            });
+        }
+
+        // ==========================================
+        // REGISTER LOGIC (ANTI STUCK DENGAN TIMEOUT)
+        // ==========================================
+        document.getElementById('register-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('reg-username').value.trim();
+            const email = document.getElementById('reg-email').value.trim();
+            const pass = document.getElementById('reg-password').value;
+            const pass2 = document.getElementById('reg-password-confirm').value;
+
+            if (pass !== pass2) {
+                return Swal.fire({ icon: 'error', title: 'Oops...', text: 'Password tidak cocok!', background: '#1a1a24', color: '#fff' });
+            }
+
+            // Atur loading tombol
+            const btn = document.getElementById('btn-register');
+            const loader = document.getElementById('reg-loader');
+            const btnText = document.getElementById('reg-text');
+            btn.disabled = true; loader.classList.remove('hidden'); btnText.classList.add('hidden');
+
+            try {
+                // Gunakan timeout 10 detik, jika lebih dari itu paksa Error agar tidak macet
+                await promiseWithTimeout(10000, (async () => {
+                    const deviceRef = await db.ref('devices/' + myDeviceId).once('value');
+                    if (deviceRef.exists()) throw new Error("Perangkat ini sudah terdaftar. 1 HP hanya boleh memiliki 1 akun!");
+
+                    const usernameRef = await db.ref('usernames/' + username.toLowerCase()).once('value');
+                    if (usernameRef.exists()) throw new Error("Username sudah digunakan orang lain!");
+
+                    const userCredential = await auth.createUserWithEmailAndPassword(email, pass);
+                    const user = userCredential.user;
+
+                    let initialCredits = 20;
+                    if (username.toLowerCase() === 'samudev') initialCredits = 1000000;
+
+                    await db.ref('users/' + user.uid).set({
+                        username: username,
+                        email: email,
+                        credits: initialCredits,
+                        deviceId: myDeviceId,
+                        createdAt: firebase.database.ServerValue.TIMESTAMP
+                    });
+
+                    // Simpan email agar nanti bisa login pakai username
+                    await db.ref('usernames/' + username.toLowerCase()).set({
+                        uid: user.uid,
+                        email: email
+                    });
+                    
+                    await db.ref('devices/' + myDeviceId).set(user.uid);
+                })());
+
+                Swal.fire({ icon: 'success', title: 'Berhasil!', text: 'Akun berhasil dibuat.', background: '#1a1a24', color: '#fff', confirmButtonColor: '#818cf8' });
+
+            } catch (error) {
+                Swal.fire({ icon: 'error', title: 'Pendaftaran Gagal', text: error.message || error.code, background: '#1a1a24', color: '#fff', confirmButtonColor: '#ef4444' });
+            } finally {
+                // PASTI DIRESET KEMBALI
+                btn.disabled = false; loader.classList.add('hidden'); btnText.classList.remove('hidden');
+            }
+        });
+
+        // ==========================================
+        // LOGIN LOGIC (BISA EMAIL ATAU USERNAME)
+        // ==========================================
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const identifier = document.getElementById('login-identifier').value.trim();
+            const pass = document.getElementById('login-password').value;
+
+            const btn = document.getElementById('btn-login');
+            const loader = document.getElementById('login-loader');
+            const btnText = document.getElementById('login-text');
+            btn.disabled = true; loader.classList.remove('hidden'); btnText.classList.add('hidden');
+
+            try {
+                let targetEmail = identifier;
+
+                await promiseWithTimeout(10000, (async () => {
+                    // Jika tidak mengandung '@', anggap sebagai username
+                    if (!identifier.includes('@')) {
+                        const userRef = await db.ref('usernames/' + identifier.toLowerCase()).once('value');
+                        if (userRef.exists()) {
+                            targetEmail = userRef.val().email; // Ambil email dari database
+                        } else {
+                            throw new Error("Username tidak terdaftar!");
+                        }
+                    }
+
+                    // Login dengan email yang didapat (atau email asli)
+                    await auth.signInWithEmailAndPassword(targetEmail, pass);
+                })());
+                
+            } catch (error) {
+                let msg = error.message;
+                if(error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found' || error.code === 'auth/invalid-email') {
+                    msg = 'Data akun tidak cocok atau salah!';
+                }
+                Swal.fire({ icon: 'error', title: 'Login Gagal', text: msg, background: '#1a1a24', color: '#fff', confirmButtonColor: '#ef4444' });
+            } finally {
+                btn.disabled = false; loader.classList.add('hidden'); btnText.classList.remove('hidden');
+            }
+        });
+
+        // ==========================================
+        // API INTEGRATION (KIRIM & VERIFIKASI)
+        // ==========================================
+        async function executeSendLink() {
+            if (!userData) return;
+            const targetEmail = document.getElementById('target-email-send').value.trim();
+            if(!targetEmail) return Swal.fire({ icon: 'warning', text: 'Masukkan email target!', background: '#1a1a24', color: '#fff' });
+            if (userData.credits < 2) return Swal.fire({ icon: 'error', title: 'Kredit Habis', text: 'Kredit Anda tidak mencukupi (Butuh 2)', background: '#1a1a24', color: '#fff' });
+
+            const btn = document.getElementById('btn-exec-send'); const loader = document.getElementById('send-loader');
+            btn.disabled = true; loader.classList.remove('hidden');
+
+            try {
+                const response = await fetch('https://am-prem-publik.vercel.app/api/send-link', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: targetEmail })
+                });
+                const data = await response.json();
+
+                if (data.status) {
+                    await db.ref('users/' + currentUser.uid).update({ credits: userData.credits - 2 });
+                    Swal.fire({ icon: 'success', title: 'Terkirim!', text: 'Link magic berhasil dikirim ke ' + targetEmail, background: '#1a1a24', color: '#fff', confirmButtonColor: '#818cf8' });
+                    document.getElementById('target-email-send').value = ''; closeMenu('send-link');
+                } else throw new Error(data.message || "Gagal dari server API");
+            } catch (error) {
+                Swal.fire({ icon: 'error', title: 'Gagal', text: error.message, background: '#1a1a24', color: '#fff' });
+            } finally {
+                btn.disabled = false; loader.classList.add('hidden');
+            }
+        }
+
+        async function executeVerifyLink() {
+            if (!userData) return;
+            const targetEmail = document.getElementById('target-email-verify').value.trim();
+            const magicLink = document.getElementById('magic-link-input').value.trim();
+            
+            if(!targetEmail || !magicLink) return Swal.fire({ icon: 'warning', text: 'Lengkapi semua data!', background: '#1a1a24', color: '#fff' });
+            if (userData.credits < 2) return Swal.fire({ icon: 'error', title: 'Kredit Habis', text: 'Kredit Anda tidak mencukupi (Butuh 2)', background: '#1a1a24', color: '#fff' });
+
+            const btn = document.getElementById('btn-exec-verify'); const loader = document.getElementById('verify-loader');
+            btn.disabled = true; loader.classList.remove('hidden');
+
+            try {
+                const response = await fetch('https://am-prem-publik.vercel.app/api/verify-link', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: targetEmail, link: magicLink })
+                });
+                const data = await response.json();
+
+                if (data.status) {
+                    await db.ref('users/' + currentUser.uid).update({ credits: userData.credits - 2 });
+                    Swal.fire({ icon: 'success', title: 'Terverifikasi!', text: 'Akun AM berhasil diaktifkan ke Premium!', background: '#1a1a24', color: '#fff', confirmButtonColor: '#22c55e' });
+                    document.getElementById('target-email-verify').value = ''; document.getElementById('magic-link-input').value = ''; closeMenu('verify-link');
+                } else throw new Error(data.message || "Gagal verifikasi link");
+            } catch (error) {
+                Swal.fire({ icon: 'error', title: 'Gagal', text: error.message, background: '#1a1a24', color: '#fff' });
+            } finally {
+                btn.disabled = false; loader.classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
+
